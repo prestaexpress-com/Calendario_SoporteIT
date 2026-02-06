@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -198,6 +199,47 @@
             color: #333;
         }
 
+        .calendar-item.pasado {
+            background: #e0e0e0 !important;
+            color: #888 !important;
+            border-color: #999 !important;
+            opacity: 0.6;
+        }
+
+        .calendar-item.pasado .calendar-tech {
+            color: #666 !important;
+        }
+
+        .calendar-item.hoy {
+            border: 4px solid #FFD700 !important;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6) !important;
+            position: relative;
+            animation: pulse 2s infinite;
+        }
+
+        .calendar-item.hoy::before {
+            content: "📍 HOY";
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #FFD700;
+            color: #333;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.03);
+            }
+        }
+
         .calendar-item:hover {
             transform: scale(1.05);
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
@@ -251,10 +293,7 @@
 
         <div class="selector-container">
             <div class="date-selector">
-                <label for="dateInput">Seleccionar Fecha (Sábado/Domingo):</label>
-                <input type="date" id="dateInput">
-                <button onclick="buscarFecha()">Buscar</button>
-                <button onclick="mostrarCalendario()">Ver Calendario Completo</button>
+                <button onclick="mostrarCalendarioFinesDeSemana()">Ver Calendario Completo</button>
             </div>
         </div>
 
@@ -277,7 +316,7 @@
         };
 
         // Inicializar con la fecha de inicio
-        const fechaInicio = new Date(2025, 11, 6); // 6 de diciembre 2025 (sábado)
+        const fechaInicio = new Date(2026, 0, 3); // 3 de enero 2026 (sábado)
 
         function obtenerTecnicoParaFecha(fecha) {
             const dia = fecha.getDay();
@@ -348,14 +387,27 @@
             `;
         }
 
-        function mostrarCalendario() {
+        function mostrarCalendarioFinesDeSemana(incluirPasados = false) {
             const calendarContainer = document.getElementById('calendarContainer');
             document.getElementById('resultContainer').innerHTML = '';
             
-            let html = '<div class="calendar-view"><h2 style="text-align: center; margin-bottom: 20px; color: #333;">Calendario Completo 2025-2027</h2><div class="calendar-grid">';
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            let html = '<div class="calendar-view"><h2 style="text-align: center; margin-bottom: 20px; color: #333;">Calendario de Fines de Semana 2026</h2>';
+            
+            // Botón para mostrar/ocultar fechas pasadas
+            if (!incluirPasados) {
+                html += '<div style="text-align: center; margin-bottom: 20px;"><button onclick="mostrarCalendarioFinesDeSemana(true)" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1em;">📅 Mostrar Fechas Anteriores</button></div>';
+            } else {
+                html += '<div style="text-align: center; margin-bottom: 20px;"><button onclick="mostrarCalendarioFinesDeSemana(false)" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1em;">🔼 Ocultar Fechas Anteriores</button></div>';
+            }
+            
+            html += '<div class="calendar-grid">';
 
-            const fechaFin = new Date(2027, 11, 31); // 31 de diciembre 2027
-            let fecha = new Date(2025, 11, 6); // Empezar desde el 6 de diciembre 2025 (sábado)
+            const fechaFin = new Date(2026, 11, 31); // 31 de diciembre 2026
+            let fechaInicial = incluirPasados ? new Date(2026, 0, 3) : hoy; // Empezar desde hoy o desde el inicio
+            let fecha = new Date(fechaInicial);
 
             while (fecha <= fechaFin) {
                 // Crear una fecha local sin conversión de zona horaria
@@ -368,9 +420,11 @@
                 if (diaLocal === 6 || diaLocal === 0) { // Sábado o Domingo
                     const tecnico = obtenerTecnicoParaFecha(fechaLocal);
                     const clase = tecnico === tecnicos.cristhian ? 'cristhian' : 'pablo';
+                    const esPasado = fechaLocal < hoy ? 'pasado' : '';
+                    const esHoy = fechaLocal.getTime() === hoy.getTime() ? 'hoy' : '';
                     
                     html += `
-                        <div class="calendar-item ${clase}" onclick='mostrarDetalle("${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}")'>
+                        <div class="calendar-item ${clase} ${esPasado} ${esHoy}" onclick='mostrarDetalle("${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}")'>
                             <div class="calendar-date">${day}/${month + 1}/${year}</div>
                             <div class="calendar-tech">${tecnico.nombre}</div>
                         </div>
@@ -381,6 +435,29 @@
 
             html += '</div></div>';
             calendarContainer.innerHTML = html;
+        }
+
+        function obtenerProximoFinDeSemana() {
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            const diaActual = hoy.getDay();
+            
+            // Si es sábado (6) o domingo (0), retornar hoy
+            if (diaActual === 6 || diaActual === 0) {
+                return hoy;
+            }
+            
+            // Si es lunes a viernes, calcular días hasta el próximo sábado
+            const diasHastaSabado = (6 - diaActual + 7) % 7;
+            const proximoSabado = new Date(hoy);
+            proximoSabado.setDate(hoy.getDate() + diasHastaSabado);
+            
+            return proximoSabado;
+            
+        }
+
+        function cargarFinDeSemanaActual() {
+            // No mostrar nada automáticamente al cargar la página
         }
 
         function mostrarDetalle(fechaString) {
@@ -411,16 +488,9 @@
             resultContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // Configurar el input de fecha para solo permitir sábados y domingos
-        document.getElementById('dateInput').addEventListener('input', function(e) {
-            const fecha = new Date(this.value + 'T00:00:00');
-            const dia = fecha.getDay();
-            
-            if (dia !== 0 && dia !== 6) {
-                this.setCustomValidity('Por favor selecciona un sábado o domingo');
-            } else {
-                this.setCustomValidity('');
-            }
+        // Cargar automáticamente el fin de semana actual al iniciar la página
+        window.addEventListener('DOMContentLoaded', function() {
+            cargarFinDeSemanaActual();
         });
     </script>
 </body>
